@@ -6,7 +6,7 @@ export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
   }),
-  tagTypes: ['User', 'Auth', 'Dashboard', 'Dimension'],
+  tagTypes: ['User', 'Auth', 'Dashboard', 'Dimension', 'Complaints'],
   keepUnusedDataFor: 600, // 10 minutes cache
   endpoints: builder => ({
     getFunctionalityCheck: builder.mutation({

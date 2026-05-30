@@ -135,7 +135,7 @@ const LoginScreen = ({ navigation }) => {
               {/* Header Section */}
               <View style={dynamicStyles.header}>
                 <View style={dynamicStyles.logoContainer}>
-                  <Text style={dynamicStyles.logoText}>Desolutions</Text>
+                  <Text style={dynamicStyles.logoText}>BPTL Internet</Text>
                   <View
                     style={[
                       dynamicStyles.logoBar,

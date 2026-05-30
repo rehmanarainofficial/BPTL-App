@@ -31,6 +31,8 @@ import BalanceSheetReportScreen from '@screens/reporting/BalanceSheetReportScree
 import AttendanceScreen from '@screens/hcm/AttendanceScreen';
 import ExpenseClaimInquiryScreen from '@screens/hcm/ExpenseClaimInquiryScreen';
 import ExpenseClaimScreen from '@screens/hcm/ExpenseClaimScreen';
+import CustomersScreen from '@screens/sales/CustomersScreen';
+import ComplaintsInquiryScreen from '@screens/sales/ComplaintsInquiryScreen';
 import { LoadingSpinner, CustomHeader } from '@components/common';
 
 const Stack = createNativeStackNavigator();
@@ -87,6 +89,17 @@ const AppNavigator = () => {
               options={{ headerShown: false }}
             />
 
+            <Stack.Screen name="Customers" component={CustomersScreen} />
+            <Stack.Screen
+              name="AddComplaints"
+              component={CustomersScreen}
+              options={{ title: 'Add Complaints' }}
+            />
+            <Stack.Screen
+              name="ComplaintsInquiry"
+              component={ComplaintsInquiryScreen}
+              options={{ title: 'Complaints Inquiry' }}
+            />
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen
               name="AccountDetail"
@@ -195,7 +208,10 @@ const AppNavigator = () => {
             />
 
             <Stack.Screen name="HCMAttendance" component={AttendanceScreen} />
-            <Stack.Screen name="HCMExpenseClaim" component={ExpenseClaimInquiryScreen} />
+            <Stack.Screen
+              name="HCMExpenseClaim"
+              component={ExpenseClaimInquiryScreen}
+            />
             <Stack.Screen name="ExpenseClaim" component={ExpenseClaimScreen} />
             <Stack.Screen name="HCMDVRInquiry" component={FinanceScreen} />
             <Stack.Screen name="HCMLocalPurchase" component={FinanceScreen} />
