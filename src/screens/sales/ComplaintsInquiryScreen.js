@@ -29,7 +29,6 @@ const ComplaintsInquiryScreen = ({ navigation }) => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState('default'); // 'default', 'priority-hl', 'priority-lh', 'status'
-  const [expandedTicketId, setExpandedTicketId] = useState(null);
 
   // Parse complaints list from API response
   const complaints = useMemo(() => {
@@ -108,13 +107,10 @@ const ComplaintsInquiryScreen = ({ navigation }) => {
     return data;
   }, [filteredComplaints, selectedSort]);
 
-  const toggleExpand = id => {
-    setExpandedTicketId(prev => (prev === id ? null : id));
-  };
-
   const getPriorityColor = p => {
     const priority = (p || '').toLowerCase();
-    if (priority === 'high') return { bg: '#FEE2E2', text: '#EF4444' };
+    if (priority === 'critical') return { bg: '#FEE2E2', text: '#EF4444' };
+    if (priority === 'high') return { bg: '#FFF5F5', text: '#FA5252' };
     if (priority === 'medium') return { bg: '#FEF3C7', text: '#F59E0B' };
     return { bg: '#E0F2FE', text: '#0284C7' };
   };
@@ -131,6 +127,8 @@ const ComplaintsInquiryScreen = ({ navigation }) => {
         text: '#059669',
         icon: 'checkmark-circle-outline',
       };
+    if (status === 'on hold' || status === 'on-hold')
+      return { bg: '#FEE2E2', text: '#EF4444', icon: 'pause-circle-outline' };
     return { bg: '#F3F4F6', text: '#6B7280', icon: 'help-circle-outline' };
   };
 
@@ -378,7 +376,6 @@ const ComplaintsInquiryScreen = ({ navigation }) => {
   );
 
   const renderComplaintCard = ({ item }) => {
-    const isExpanded = expandedTicketId === item.id;
     const priorityColor = getPriorityColor(item.priority);
     const statusColor = getStatusColor(item.status);
 
@@ -395,12 +392,6 @@ const ComplaintsInquiryScreen = ({ navigation }) => {
         {/* Ticket Header */}
         <View style={s.cardHeader}>
           <View style={s.ticketIdBox}>
-            <Icon
-              name="key-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={{ marginRight: 4 }}
-            />
             <Text style={s.ticketIdText}>{item.ticket_id}</Text>
           </View>
           <View style={[s.statusBadge, { backgroundColor: statusColor.bg }]}>
@@ -418,215 +409,84 @@ const ComplaintsInquiryScreen = ({ navigation }) => {
 
         {/* Card Body */}
         <View style={s.cardBody}>
-          {/* Customer */}
-          <View style={s.detailRow}>
-            <Icon
-              name="person-outline"
-              size={16}
-              color={theme.colors.textSecondary}
-              style={s.detailIcon}
-            />
-            <View style={s.detailTexts}>
-              <Text
-                style={[s.detailLabel, { color: theme.colors.textSecondary }]}
-              >
-                Customer
-              </Text>
+          {/* Grid Container for Short Key-Values */}
+          <View style={s.gridContainer}>
+            <View style={s.gridItem}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Customer</Text>
               <Text style={[s.detailValue, { color: theme.colors.text }]}>
                 {item.customer_name}{' '}
                 <Text style={s.customerIdText}>({item.customer_id})</Text>
               </Text>
             </View>
-          </View>
 
-          {/* Package Type */}
-          <View style={s.detailRow}>
-            <Icon
-              name="pricetag-outline"
-              size={16}
-              color={theme.colors.textSecondary}
-              style={s.detailIcon}
-            />
-            <View style={s.detailTexts}>
-              <Text
-                style={[s.detailLabel, { color: theme.colors.textSecondary }]}
-              >
-                Package
-              </Text>
-              <Text style={[s.detailValue, { color: theme.colors.text }]}>
-                {item.package_type}
-              </Text>
+            <View style={s.gridItem}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Package</Text>
+              <Text style={[s.detailValue, { color: theme.colors.text }]}>{item.package_type}</Text>
+            </View>
+
+            <View style={s.gridItem}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Service Type</Text>
+              <Text style={[s.detailValue, { color: theme.colors.text }]}>{item.service_type || 'Internet'}</Text>
+            </View>
+
+            <View style={s.gridItem}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Lineman</Text>
+              <Text style={[s.detailValue, { color: theme.colors.text }]}>{item.lineman_name || 'Unassigned'}</Text>
+            </View>
+
+            <View style={s.gridItem}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Priority</Text>
+              <View style={[s.priorityBadge, { backgroundColor: priorityColor.bg, alignSelf: 'flex-start', marginTop: 2 }]}>
+                <Text style={[s.priorityText, { color: priorityColor.text }]}>{item.priority || 'Low'}</Text>
+              </View>
+            </View>
+
+            <View style={s.gridItem}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Submitted Date</Text>
+              <Text style={[s.detailValue, { color: theme.colors.text }]}>{item.created_date || 'N/A'}</Text>
             </View>
           </View>
 
-          {/* Service Type */}
-          <View style={s.detailRow}>
-            <Icon
-              name="flash-outline"
-              size={16}
-              color={theme.colors.textSecondary}
-              style={s.detailIcon}
-            />
-            <View style={s.detailTexts}>
-              <Text
-                style={[s.detailLabel, { color: theme.colors.textSecondary }]}
-              >
-                Service Type
-              </Text>
-              <Text style={[s.detailValue, { color: theme.colors.text }]}>
-                {item.service_type || 'Internet'}
-              </Text>
+          {/* Full-row Address */}
+          {!!item.address && (
+            <View style={s.fullWidthRow}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Address</Text>
+              <Text style={[s.detailValue, { color: theme.colors.text, fontWeight: '500' }]}>{item.address}</Text>
             </View>
-          </View>
+          )}
 
-          {/* Expanded details */}
-          {isExpanded && (
-            <>
-              {/* Lineman */}
-              <View style={s.detailRow}>
-                <Icon
-                  name="build-outline"
-                  size={16}
-                  color={theme.colors.textSecondary}
-                  style={s.detailIcon}
-                />
-                <View style={s.detailTexts}>
-                  <Text
-                    style={[
-                      s.detailLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Assigned Lineman
-                  </Text>
-                  <Text style={[s.detailValue, { color: theme.colors.text }]}>
-                    {item.lineman_name || 'Unassigned'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Address */}
-              <View style={s.detailRow}>
-                <Icon
-                  name="location-outline"
-                  size={16}
-                  color={theme.colors.textSecondary}
-                  style={s.detailIcon}
-                />
-                <View style={s.detailTexts}>
-                  <Text
-                    style={[
-                      s.detailLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Address
-                  </Text>
-                  <Text style={[s.detailValue, { color: theme.colors.text }]}>
-                    {item.address || 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Created Date */}
-              <View style={s.detailRow}>
-                <Icon
-                  name="time-outline"
-                  size={16}
-                  color={theme.colors.textSecondary}
-                  style={s.detailIcon}
-                />
-                <View style={s.detailTexts}>
-                  <Text
-                    style={[
-                      s.detailLabel,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    Submitted Date
-                  </Text>
-                  <Text style={[s.detailValue, { color: theme.colors.text }]}>
-                    {item.created_date || 'N/A'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Issue Description */}
-              <View style={s.descriptionSection}>
-                <Text
-                  style={[
-                    s.descriptionLabel,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  Issue Description
+          {/* Full-row Issue Description */}
+          {!!item.issue_description && (
+            <View style={s.fullWidthRow}>
+              <Text style={[s.detailLabel, { color: theme.colors.textSecondary }]}>Issue Description</Text>
+              <View
+                style={[
+                  s.descriptionBox,
+                  {
+                    backgroundColor: theme.colors.background,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Text style={[s.descriptionValue, { color: theme.colors.text }]}>
+                  {item.issue_description}
                 </Text>
-                <View
-                  style={[
-                    s.descriptionBox,
-                    {
-                      backgroundColor: theme.colors.background,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[s.descriptionValue, { color: theme.colors.text }]}
-                  >
-                    {item.issue_description || 'No description provided.'}
-                  </Text>
-                </View>
               </View>
-            </>
+            </View>
           )}
         </View>
 
         {/* Card Footer */}
         <View style={[s.cardFooter, { borderTopColor: theme.colors.border }]}>
-          <View
-            style={[s.priorityBadge, { backgroundColor: priorityColor.bg }]}
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={[s.editBtn, { backgroundColor: theme.colors.primary + '15', borderColor: theme.colors.primary }]}
+            onPress={() => navigation.navigate('Customers', { complaint: item })}
+            activeOpacity={0.7}
           >
-            <Text style={[s.priorityText, { color: priorityColor.text }]}>
-              {item.priority || 'Low'} Priority
-            </Text>
-          </View>
-
-          <View style={s.actionRow}>
-            {/* Edit Button */}
-            <TouchableOpacity
-              style={[s.actionBtn, s.editBtn, { borderColor: '#EAB308' }]}
-              onPress={() =>
-                navigation.navigate('Customers', { complaint: item })
-              }
-              activeOpacity={0.7}
-            >
-              <Icon name="create-outline" size={14} color="#D97706" />
-              <Text style={[s.actionBtnText, { color: '#D97706' }]}>Edit</Text>
-            </TouchableOpacity>
-
-            {/* View Details Button */}
-            <TouchableOpacity
-              style={[
-                s.actionBtn,
-                s.expandBtn,
-                { borderColor: theme.colors.primary },
-              ]}
-              onPress={() => toggleExpand(item.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={[s.actionBtnText, { color: theme.colors.primary }]}>
-                {isExpanded ? 'Less' : 'Details'}
-              </Text>
-              <Icon
-                name={
-                  isExpanded ? 'chevron-up-outline' : 'chevron-down-outline'
-                }
-                size={14}
-                color={theme.colors.primary}
-                style={{ marginLeft: 2 }}
-              />
-            </TouchableOpacity>
-          </View>
+            <Icon name="create-outline" size={16} color={theme.colors.primary} />
+            <Text style={[s.editBtnText, { color: theme.colors.primary }]}>Edit Complaint</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -934,29 +794,32 @@ const getStyles = (theme, insets) =>
       fontSize: 11,
       fontWeight: '800',
     },
-    expandBtn: {
-      backgroundColor: 'transparent',
-    },
-    actionRow: {
+    gridContainer: {
       flexDirection: 'row',
-      alignItems: 'center',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      marginBottom: 6,
     },
-    actionBtn: {
+    gridItem: {
+      width: '48%',
+      marginBottom: 12,
+    },
+    fullWidthRow: {
+      width: '100%',
+      marginBottom: 12,
+    },
+    editBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       borderWidth: 1.5,
       borderRadius: 10,
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-      backgroundColor: 'transparent',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
     },
-    editBtn: {
-      marginRight: 6,
-    },
-    actionBtnText: {
-      fontSize: 11,
+    editBtnText: {
+      fontSize: 13,
       fontWeight: '700',
-      marginLeft: 2,
+      marginLeft: 6,
     },
     // Empty state
     emptyContainer: {

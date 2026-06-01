@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,45 +16,45 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Dropdown } from 'react-native-element-dropdown';
 import { useTheme } from '@config/useTheme';
-import { PersonDropdown } from '@components/common';
-import { usePostComplaintMutation } from '@api/complaintApi';
+import {
+  usePostComplaintMutation,
+  useGetLinemenQuery,
+  useGetEmployeesQuery,
+} from '@api/complaintApi';
 import Toast from 'react-native-toast-message';
 
 const PACKAGE_OPTIONS = [
-  { label: 'Fiber Blast 50 Mbps', value: 'Fiber Blast 50 Mbps' },
-  { label: 'Fiber Blast 100 Mbps', value: 'Fiber Blast 100 Mbps' },
-  { label: 'Fiber Blast 200 Mbps', value: 'Fiber Blast 200 Mbps' },
   { label: 'Fiber Blast 300 Mbps', value: 'Fiber Blast 300 Mbps' },
-  { label: 'Fiber Blast 500 Mbps', value: 'Fiber Blast 500 Mbps' },
+  { label: 'Fiber Pro 1 Gbps', value: 'Fiber Pro 1 Gbps' },
+  { label: 'Cable Max HD', value: 'Cable Max HD' },
+  { label: 'Cable Essential', value: 'Cable Essential' },
+  { label: 'Duo Entertainment Pack', value: 'Duo Entertainment Pack' },
+  { label: 'Business Connect', value: 'Business Connect' },
 ];
 
 const SERVICE_TYPE_OPTIONS = [
-  { label: 'Service Issue', value: '' },
-  { label: 'Cable TV', value: 'Cable TV' },
-  { label: 'No Internet / Red Light', value: 'No Internet / Red Light' },
-  { label: 'Slow Speed Issue', value: 'Slow Speed Issue' },
-  { label: 'Frequent Disconnection', value: 'Frequent Disconnection' },
-  { label: 'Physical Cable Damage', value: 'Physical Cable Damage' },
-  {
-    label: 'Routing / Gaming Ping Issue',
-    value: 'Routing / Gaming Ping Issue',
-  },
-  { label: 'Other Technical Issue', value: 'Other Technical Issue' },
+  { label: 'No Internet', value: 'No Internet' },
+  { label: 'Slow Speed', value: 'Slow Speed' },
+  { label: 'Intermittent Connection', value: 'Intermittent Connection' },
+  { label: 'Router Issue', value: 'Router Issue' },
+  { label: 'Cable Damage', value: 'Cable Damage' },
+  { label: 'Billing Issue', value: 'Billing Issue' },
+  { label: 'New Connection', value: 'New Connection' },
+  { label: 'Other', value: 'Other' },
 ];
 
 const PRIORITY_OPTIONS = [
   { label: 'High', value: 'High' },
   { label: 'Medium', value: 'Medium' },
   { label: 'Low', value: 'Low' },
+  { label: 'Critical', value: 'Critical' },
 ];
 
-const LINEMAN_OPTIONS = [
-  { label: 'Lineman', value: '' },
-  { label: 'Sunil Yadav', value: 'Sunil Yadav' },
-  { label: 'Zeeshan Khan', value: 'Zeeshan Khan' },
-  { label: 'Imran Ali', value: 'Imran Ali' },
-  { label: 'Sajid Ahmed', value: 'Sajid Ahmed' },
-  { label: 'Kamran Shah', value: 'Kamran Shah' },
+const STATUS_OPTIONS = [
+  { label: 'Pending', value: 'Pending' },
+  { label: 'In Progress', value: 'In Progress' },
+  { label: 'Resolved', value: 'Resolved' },
+  { label: 'On Hold', value: 'On Hold' },
 ];
 
 const CustomersScreen = ({ navigation, route }) => {
@@ -76,11 +76,12 @@ const CustomersScreen = ({ navigation, route }) => {
   const [serviceType, setServiceType] = useState(complaint?.service_type || '');
   const [priority, setPriority] = useState(complaint?.priority || 'High');
   const [lineman, setLineman] = useState(complaint?.lineman_name || '');
+  const [status, setStatus] = useState(complaint?.status || 'Pending');
   const [describeIssue, setDescribeIssue] = useState(
     complaint?.issue_description || '',
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     console.log(
       'CustomersScreen [DEBUG] - Route params received (complaint):',
       complaint,
@@ -104,6 +105,7 @@ const CustomersScreen = ({ navigation, route }) => {
       setServiceType(complaint.service_type || '');
       setPriority(complaint.priority || 'High');
       setLineman(complaint.lineman_name || '');
+      setStatus(complaint.status || 'Pending');
       setDescribeIssue(complaint.issue_description || '');
     } else {
       console.log(
@@ -117,6 +119,7 @@ const CustomersScreen = ({ navigation, route }) => {
       setServiceType('');
       setPriority('High');
       setLineman('');
+      setStatus('Pending');
       setDescribeIssue('');
     }
   }, [complaint, isEditing, navigation]);
@@ -124,18 +127,53 @@ const CustomersScreen = ({ navigation, route }) => {
   const [postComplaint, { isLoading: isPostLoading }] =
     usePostComplaintMutation();
 
-  const handleCustomerSelect = customer => {
-    if (customer) {
-      setSelectedCustomerId(customer.id);
-      setFullName(customer.name || '');
+  // Fetch live lists
+  const { data: employeesRes, isLoading: isEmployeesLoading } = useGetEmployeesQuery();
+  const { data: linemenRes, isLoading: isLinemenLoading } = useGetLinemenQuery();
 
-      const cleanName = (customer.name || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '');
-      setEmail(cleanName ? `${cleanName}@example.com` : 'customer@example.com');
-      setAddress('Latifabad Hyderabad');
+  // Memoize employee dropdown options
+  const employeeOptions = useMemo(() => {
+    let list = [];
+    if (employeesRes?.data) {
+      list = employeesRes.data.map(emp => ({
+        label: emp.name,
+        value: emp.debtor_no,
+      }));
     }
-  };
+    // Fallback in Edit Mode to ensure current selected customer displays correctly
+    if (isEditing && complaint?.customer_id) {
+      const exists = list.some(item => String(item.value) === String(complaint.customer_id));
+      if (!exists) {
+        list.unshift({
+          label: complaint.customer_name || `Customer ID: ${complaint.customer_id}`,
+          value: complaint.customer_id,
+        });
+      }
+    }
+    return list;
+  }, [employeesRes, isEditing, complaint]);
+
+  // Memoize lineman dropdown options
+  const linemenOptions = useMemo(() => {
+    let list = [];
+    if (linemenRes?.data) {
+      list = linemenRes.data.map(lm => ({
+        label: lm.salesman_name,
+        value: lm.salesman_name,
+      }));
+    }
+    // Fallback in Edit Mode
+    if (isEditing && complaint?.lineman_name) {
+      const exists = list.some(item => item.value === complaint.lineman_name);
+      if (!exists) {
+        list.unshift({
+          label: complaint.lineman_name,
+          value: complaint.lineman_name,
+        });
+      }
+    }
+    return list;
+  }, [linemenRes, isEditing, complaint]);
 
   const handleSubmit = async () => {
     if (!selectedCustomerId) {
@@ -176,6 +214,7 @@ const CustomersScreen = ({ navigation, route }) => {
         priority: priority,
         lineman_name: lineman,
         issue_desc: describeIssue,
+        status: status,
       };
 
       if (isEditing && complaint?.ticket_id) {
@@ -224,79 +263,47 @@ const CustomersScreen = ({ navigation, route }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Title Area mimicking user screenshot */}
-        <View style={s.titleArea}>
-          <View style={s.titleRow}>
-            <Icon
-              name="create-outline"
-              size={24}
-              color={theme.colors.primary}
-              style={s.titleIcon}
-            />
-            <Text style={s.formTitle}>
-              {isEditing ? 'Edit Complaint' : 'Register Complaint'}
-            </Text>
-          </View>
-          <Text style={s.formSubtitle}>
-            {isEditing
-              ? 'Update the details of the complaint below.'
-              : 'Start typing customer name or ID - suggestions will appear.'}
-          </Text>
-        </View>
-
-        {/* Customer Field Section using the existing PersonDropdown */}
+        {/* Customer Field Section */}
         <View style={s.fieldSection}>
           <View style={s.labelRow}>
-            <Icon
-              name="search-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
             <Text style={s.fieldLabel}>Customer</Text>
             <Text style={s.requiredAsterisk}> *</Text>
           </View>
-          <PersonDropdown
-            type="customer"
-            selectedPersonId={selectedCustomerId}
-            onSelect={handleCustomerSelect}
-            style={s.dropdownOverride}
+          <Dropdown
+            style={s.formDropdown}
+            data={employeeOptions}
+            search
+            searchPlaceholder="Search customer..."
+            labelField="label"
+            valueField="value"
+            value={selectedCustomerId}
+            onChange={item => {
+              setSelectedCustomerId(item.value);
+              setFullName(item.label);
+            }}
+            placeholder={isEmployeesLoading ? "Loading Customers..." : "Select Customer"}
+            placeholderStyle={[
+              s.dropdownPlaceholder,
+              { color: theme.colors.textSecondary },
+            ]}
+            selectedTextStyle={[
+              s.dropdownSelectedText,
+              { color: theme.colors.text },
+            ]}
+            itemTextStyle={[s.dropdownItemText, { color: theme.colors.text }]}
+            containerStyle={[
+              s.dropdownContainer,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              },
+            ]}
           />
-        </View>
-
-        {/* Full Name */}
-        <View style={s.fieldSection}>
-          <View style={s.labelRow}>
-            <Icon
-              name="person-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
-            <Text style={s.fieldLabel}>Full Name</Text>
-            <Text style={s.requiredAsterisk}> *</Text>
-          </View>
-          <View style={[s.inputWrap, s.disabledInputWrap]}>
-            <TextInput
-              style={s.input}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Full name will appear here"
-              placeholderTextColor={theme.colors.textSecondary}
-              editable={false}
-            />
-          </View>
         </View>
 
         {/* Email Address */}
         <View style={s.fieldSection}>
           <View style={s.labelRow}>
-            <Icon
-              name="mail-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
             <Text style={s.fieldLabel}>Email Address</Text>
             <Text style={s.requiredAsterisk}> *</Text>
           </View>
@@ -316,12 +323,6 @@ const CustomersScreen = ({ navigation, route }) => {
         {/* Address */}
         <View style={s.fieldSection}>
           <View style={s.labelRow}>
-            <Icon
-              name="location-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
             <Text style={s.fieldLabel}>Address</Text>
             <Text style={s.requiredAsterisk}> *</Text>
           </View>
@@ -330,7 +331,7 @@ const CustomersScreen = ({ navigation, route }) => {
               style={s.input}
               value={address}
               onChangeText={setAddress}
-              placeholder="Latifabad Hyderabad"
+              placeholder="Address..."
               placeholderTextColor={theme.colors.textSecondary}
             />
           </View>
@@ -339,12 +340,6 @@ const CustomersScreen = ({ navigation, route }) => {
         {/* Package Type */}
         <View style={s.fieldSection}>
           <View style={s.labelRow}>
-            <Icon
-              name="pricetag-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
             <Text style={s.fieldLabel}>Package Type</Text>
             <Text style={s.requiredAsterisk}> *</Text>
           </View>
@@ -378,22 +373,17 @@ const CustomersScreen = ({ navigation, route }) => {
         <View style={s.rowFields}>
           <View style={[s.fieldSection, s.halfField]}>
             <View style={s.labelRow}>
-              <Icon
-                name="flash-outline"
-                size={14}
-                color={theme.colors.primary}
-                style={s.fieldLabelIcon}
-              />
               <Text style={s.fieldLabel}>Service Type</Text>
               <Text style={s.requiredAsterisk}> *</Text>
             </View>
             <Dropdown
-              style={s.formDropdown}
+              style={[s.formDropdown, isEditing && s.disabledDropdown]}
               data={SERVICE_TYPE_OPTIONS}
               labelField="label"
               valueField="value"
               value={serviceType}
               onChange={item => setServiceType(item.value)}
+              disable={isEditing}
               placeholder="Service Issue"
               placeholderStyle={[
                 s.dropdownPlaceholder,
@@ -416,12 +406,6 @@ const CustomersScreen = ({ navigation, route }) => {
 
           <View style={[s.fieldSection, s.halfField]}>
             <View style={s.labelRow}>
-              <Icon
-                name="alert-circle-outline"
-                size={14}
-                color={theme.colors.primary}
-                style={s.fieldLabelIcon}
-              />
               <Text style={s.fieldLabel}>Priority</Text>
               <Text style={s.requiredAsterisk}> *</Text>
             </View>
@@ -456,22 +440,16 @@ const CustomersScreen = ({ navigation, route }) => {
         {/* Assign Lineman */}
         <View style={s.fieldSection}>
           <View style={s.labelRow}>
-            <Icon
-              name="build-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
             <Text style={s.fieldLabel}>Assign Lineman</Text>
           </View>
           <Dropdown
             style={s.formDropdown}
-            data={LINEMAN_OPTIONS}
+            data={linemenOptions}
             labelField="label"
             valueField="value"
             value={lineman}
             onChange={item => setLineman(item.value)}
-            placeholder="Lineman"
+            placeholder={isLinemenLoading ? "Loading Linemen..." : "Select Lineman"}
             placeholderStyle={[
               s.dropdownPlaceholder,
               { color: theme.colors.textSecondary },
@@ -491,15 +469,44 @@ const CustomersScreen = ({ navigation, route }) => {
           />
         </View>
 
+        {/* Status Dropdown (Only in Edit Mode) */}
+        {isEditing && (
+          <View style={s.fieldSection}>
+            <View style={s.labelRow}>
+              <Text style={s.fieldLabel}>Status</Text>
+              <Text style={s.requiredAsterisk}> *</Text>
+            </View>
+            <Dropdown
+              style={s.formDropdown}
+              data={STATUS_OPTIONS}
+              labelField="label"
+              valueField="value"
+              value={status}
+              onChange={item => setStatus(item.value)}
+              placeholder="Select Status"
+              placeholderStyle={[
+                s.dropdownPlaceholder,
+                { color: theme.colors.textSecondary },
+              ]}
+              selectedTextStyle={[
+                s.dropdownSelectedText,
+                { color: theme.colors.text },
+              ]}
+              itemTextStyle={[s.dropdownItemText, { color: theme.colors.text }]}
+              containerStyle={[
+                s.dropdownContainer,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            />
+          </View>
+        )}
+
         {/* Describe Issue */}
         <View style={s.fieldSection}>
           <View style={s.labelRow}>
-            <Icon
-              name="chatbubble-ellipses-outline"
-              size={14}
-              color={theme.colors.primary}
-              style={s.fieldLabelIcon}
-            />
             <Text style={s.fieldLabel}>Describe Issue</Text>
             <Text style={s.requiredAsterisk}> *</Text>
           </View>
@@ -569,6 +576,7 @@ const getStyles = (theme, insets) =>
       color: '#FFFFFF',
       fontSize: 18,
       fontWeight: '700',
+      fontFamily: 'Outfit-Bold',
     },
     placeholderHeaderBtn: {
       width: 36,
@@ -600,11 +608,13 @@ const getStyles = (theme, insets) =>
       fontSize: 20,
       fontWeight: '800',
       color: theme.colors.text,
+      fontFamily: 'Outfit-Bold',
     },
     formSubtitle: {
       fontSize: 13,
       color: theme.colors.textSecondary,
       lineHeight: 18,
+      fontFamily: 'Outfit-Regular',
     },
     fieldSection: {
       marginBottom: 16,
@@ -615,24 +625,17 @@ const getStyles = (theme, insets) =>
       marginBottom: 8,
       paddingLeft: 4,
     },
-    fieldLabelIcon: {
-      marginRight: 6,
-    },
     fieldLabel: {
       fontSize: 13,
       fontWeight: '700',
       color: theme.colors.text,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
+      fontFamily: 'Outfit-Bold',
     },
     requiredAsterisk: {
       color: '#EF4444',
       fontWeight: '700',
-    },
-    dropdownOverride: {
-      paddingHorizontal: 0,
-      paddingTop: 0,
-      marginBottom: 0,
     },
     inputWrap: {
       flexDirection: 'row',
@@ -644,14 +647,11 @@ const getStyles = (theme, insets) =>
       paddingHorizontal: 14,
       height: 48,
     },
-    disabledInputWrap: {
-      backgroundColor: theme.colors.background,
-      opacity: 0.8,
-    },
     input: {
       flex: 1,
       fontSize: 14,
       color: theme.colors.text,
+      fontFamily: 'Outfit-Regular',
       paddingVertical: Platform.OS === 'ios' ? 12 : 8,
     },
     formDropdown: {
@@ -662,14 +662,21 @@ const getStyles = (theme, insets) =>
       height: 48,
       backgroundColor: theme.colors.surface,
     },
+    disabledDropdown: {
+      backgroundColor: theme.colors.border,
+      opacity: 0.7,
+    },
     dropdownPlaceholder: {
       fontSize: 14,
+      fontFamily: 'Outfit-Regular',
     },
     dropdownSelectedText: {
       fontSize: 14,
+      fontFamily: 'Outfit-Regular',
     },
     dropdownItemText: {
       fontSize: 14,
+      fontFamily: 'Outfit-Regular',
     },
     dropdownContainer: {
       borderRadius: 12,
@@ -712,6 +719,7 @@ const getStyles = (theme, insets) =>
       color: '#FFFFFF',
       fontSize: 16,
       fontWeight: '700',
+      fontFamily: 'Outfit-Bold',
     },
   });
 

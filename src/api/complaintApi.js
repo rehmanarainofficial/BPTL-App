@@ -20,6 +20,10 @@ export const complaintApi = baseApi.injectEndpoints({
           formData.append('ticket_id', body.ticket_id);
         }
 
+        if (body.status) {
+          formData.append('status', body.status);
+        }
+
         const baseUrl = API_SECOND_BASE_URL.endsWith('/')
           ? API_SECOND_BASE_URL.slice(0, -1)
           : API_SECOND_BASE_URL;
@@ -45,9 +49,38 @@ export const complaintApi = baseApi.injectEndpoints({
       },
       providesTags: ['Complaints'],
     }),
+    getLinemen: builder.query({
+      query: () => {
+        const baseUrl = API_SECOND_BASE_URL.endsWith('/')
+          ? API_SECOND_BASE_URL.slice(0, -1)
+          : API_SECOND_BASE_URL;
+
+        return {
+          url: `${baseUrl}/ticket/get_linesman.php`,
+          method: 'GET',
+        };
+      },
+    }),
+    getEmployees: builder.query({
+      query: () => {
+        const baseUrl = API_SECOND_BASE_URL.endsWith('/')
+          ? API_SECOND_BASE_URL.slice(0, -1)
+          : API_SECOND_BASE_URL;
+
+        return {
+          url: `${baseUrl}/ticket/get_employees.php`,
+          method: 'GET',
+        };
+      },
+    }),
   }),
   overrideExisting: true,
 });
 
-export const { usePostComplaintMutation, useGetComplaintsQuery } = complaintApi;
+export const {
+  usePostComplaintMutation,
+  useGetComplaintsQuery,
+  useGetLinemenQuery,
+  useGetEmployeesQuery,
+} = complaintApi;
 export default complaintApi;
